@@ -7,8 +7,6 @@ jobs:
     name: Wait for any issues, gh-int + code_scanning_alerts on
     runs-on: ubuntu-latest
     container: node:16
-    permissions:
-      id-token: write
     steps:
       - name: Scan Start
         id: start
@@ -26,7 +24,7 @@ jobs:
           hostname: app.brightsec.com
           scan: ${{ steps.start.outputs.id }}
           wait_for: high
-          code_scanning_alerts: false
+          code_scanning_alerts: true
           github_token: ${{ secrets.KEY_GITHUB }}
           timeout: 600
       - name: Download SARIF file
@@ -40,13 +38,16 @@ jobs:
           gzip -d bright.sarif.gz
           sarifFileText=$(cat bright.sarif)
           echo "sarif file text: $sarifFileText"
-      - name: Upload SARIF file - No GHAS
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: bright.sarif
+          # Optional category for the results
+          # Used to differentiate multiple results for one commit
+          category: BrightSecurity
+      - name: Save SARIF file
         uses: actions/upload-artifact@v4
         with: 
-          name: BrightSecurity_Report_${{ github.run_id }}
-          path: bright.sarif
-      - name: Upload results to MSDO
-        uses: microsoft/security-devops-action@v1
-        id: msdo
-        with:
-          existingFilename: bright.sarif
+          name: BrightSecurity_sarif_report
+          path: bright.sarif    
